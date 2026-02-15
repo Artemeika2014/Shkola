@@ -481,11 +481,19 @@ $("#navGrades").onclick=()=>{ studentTab="grades"; render(); };
 $("#navTasks").onclick=()=>{ studentTab="tasks"; render(); };
 $("#navSkips").onclick=()=>{ studentTab="skips"; render(); };
 
-$("#btnLogout").onclick=()=> setSession(null);
 $("#btnReset").onclick=async ()=>{
-  if(!confirm("Удалить ВСЁ из Firebase (nemoyashkola)?")) return;
+  const pass = prompt("Введите пароль для сброса базы:");
+  if(pass !== "MRCHUPAPnotNEGERS6767?!?!"){
+    alert("Неверный пароль!");
+    return;
+  }
+
+  if(!confirm("Вы уверены? Это удалит ВСЮ базу данных!")) return;
+
   db = defaultDB();
   await rtdb.ref(ROOT).set(db);
+
+  alert("База данных полностью очищена!");
   setSession(null);
 };
 
