@@ -1,0 +1,1696 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Nemoyashkola PRO — Firebase</title>
+
+  <!-- Firebase (Realtime Database, compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+  <style>
+    :root{
+      --bg:#f5f7ff; --bg2:#eef3ff;
+      --card:#ffffff; --border:rgba(25,35,60,.10);
+      --text:#12182a; --muted:rgba(18,24,42,.62);
+      --primary:#4f7cff; --primary2:#7c4dff; --primarySoft:rgba(79,124,255,.12);
+      --ok:#19c37d; --okSoft:rgba(25,195,125,.12);
+      --warn:#f59e0b; --warnSoft:rgba(245,158,11,.14);
+      --danger:#ff4d4f; --dangerSoft:rgba(255,77,79,.14);
+      --shadow:0 14px 40px rgba(16,24,40,.08);
+      --shadow2:0 18px 54px rgba(16,24,40,.12);
+      --r:18px;
+    }
+    body.dark{
+      --bg:#0b1020; --bg2:#0a1230;
+      --card:rgba(255,255,255,.07); --border:rgba(255,255,255,.14);
+      --text:#eef2ff; --muted:rgba(238,242,255,.72);
+      --primary:#6aa3ff; --primary2:#a78bfa; --primarySoft:rgba(106,163,255,.16);
+      --ok:#35d48c; --okSoft:rgba(53,212,140,.14);
+      --warn:#fbbf24; --warnSoft:rgba(251,191,36,.14);
+      --danger:#ff6a6a; --dangerSoft:rgba(255,106,106,.14);
+      --shadow:0 18px 60px rgba(0,0,0,.35);
+      --shadow2:0 22px 74px rgba(0,0,0,.45);
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      color:var(--text);
+      background:
+        radial-gradient(900px 420px at 10% 0%, rgba(124,77,255,.18), transparent 55%),
+        radial-gradient(900px 420px at 95% 10%, rgba(79,124,255,.20), transparent 50%),
+        linear-gradient(180deg,var(--bg),var(--bg2));
+      min-height:100vh;
+    }
+
+    .wrap{max-width:1200px;margin:0 auto;padding:22px 18px 110px}
+    .top{
+      display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+      margin-bottom:16px;
+    }
+    .brand{display:flex;flex-direction:column;gap:2px}
+    .brand .t{font-weight:950;font-size:22px;letter-spacing:.2px}
+    .brand .s{font-size:13px;color:var(--muted)}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media (max-width: 900px){ .grid2{grid-template-columns:1fr} }
+
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--r);
+      box-shadow:var(--shadow);
+      padding:16px;
+      backdrop-filter: blur(12px);
+    }
+    .title{font-weight:950;font-size:18px}
+    .muted{color:var(--muted);font-size:13px;line-height:1.45}
+    .hr{height:1px;background:var(--border);margin:14px 0}
+
+    .input,.select,.ta{
+      width:100%;
+      padding:12px 12px;
+      border-radius:14px;
+      border:1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 88%, transparent);
+      color:var(--text);
+      outline:none;
+      font-size:15px;
+    }
+    body:not(.dark) .input, body:not(.dark) .select, body:not(.dark) .ta{ background:#fbfcff; }
+    .input:focus,.select:focus,.ta:focus{
+      border-color: color-mix(in srgb, var(--primary) 70%, var(--border));
+      box-shadow:0 0 0 4px rgba(79,124,255,.14);
+    }
+
+    .btn{
+      padding:11px 14px;
+      border-radius:14px;
+      border:1px solid var(--border);
+      background: color-mix(in srgb, var(--primarySoft) 70%, var(--card));
+      color:var(--text);
+      font-weight:900;
+      cursor:pointer;
+      transition: transform .12s ease, box-shadow .14s ease, opacity .14s ease;
+      user-select:none;
+    }
+    .btn:hover{transform:translateY(-1px);box-shadow:var(--shadow2)}
+    .btn:active{transform:translateY(0)}
+    .btn[disabled]{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none}
+    .p{background:var(--primary);border-color:var(--primary);color:#fff}
+    .ok{background:var(--okSoft);border-color:color-mix(in srgb, var(--ok) 35%, var(--border)); color:color-mix(in srgb, var(--ok) 80%, var(--text))}
+    .w{background:var(--warnSoft);border-color:color-mix(in srgb, var(--warn) 35%, var(--border)); color:color-mix(in srgb, var(--warn) 85%, var(--text))}
+    .d{background:var(--dangerSoft);border-color:color-mix(in srgb, var(--danger) 35%, var(--border)); color:color-mix(in srgb, var(--danger) 90%, var(--text))}
+
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:7px 10px;border-radius:999px;
+      border:1px solid var(--border);
+      background: color-mix(in srgb, var(--card) 86%, var(--primarySoft));
+      font-size:13px;font-weight:900;
+    }
+
+    .tabs{display:flex;gap:10px;flex-wrap:wrap}
+    .tab{padding:10px 12px;border-radius:999px;border:1px solid var(--border);background:color-mix(in srgb, var(--card) 86%, var(--primarySoft));font-weight:900;cursor:pointer}
+    .tab.on{background:linear-gradient(90deg,var(--primary),var(--primary2)); color:#fff;border-color:transparent; box-shadow:0 10px 24px rgba(79,124,255,.22)}
+
+    .bottom{
+      position:fixed;left:0;right:0;bottom:0;
+      padding:10px 12px;
+      background: color-mix(in srgb, var(--card) 88%, transparent);
+      border-top:1px solid var(--border);
+      backdrop-filter: blur(14px);
+    }
+    .bottom .inner{max-width:1200px;margin:0 auto;display:flex;gap:10px}
+    .nav{flex:1;padding:13px 10px;border-radius:16px;border:1px solid var(--border);background:color-mix(in srgb, var(--card) 86%, var(--primarySoft));font-weight:950;cursor:pointer}
+    .nav.on{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:0 10px 24px rgba(79,124,255,.22)}
+
+    .list{display:flex;flex-direction:column;gap:10px}
+    .item{
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:12px;
+      background: color-mix(in srgb, var(--card) 90%, transparent);
+    }
+    .item .h{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+    .item .h .l{font-weight:950}
+    .item .h .r{color:var(--muted);font-size:13px;font-weight:900}
+    .sub{color:var(--muted);font-size:13px;margin-top:4px}
+
+    .marks{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .m{
+      display:inline-flex;align-items:center;justify-content:center;
+      min-width:40px;height:34px;padding:0 10px;border-radius:12px;
+      border:1px solid var(--border);font-weight:950;
+      background: color-mix(in srgb, var(--card) 86%, var(--primarySoft));
+    }
+    .m5{background:rgba(25,195,125,.14);border-color:rgba(25,195,125,.35);color:color-mix(in srgb, var(--ok) 80%, var(--text))}
+    .m4{background:rgba(79,124,255,.14);border-color:rgba(79,124,255,.35);color:color-mix(in srgb, var(--primary) 85%, var(--text))}
+    .m3{background:rgba(245,158,11,.14);border-color:rgba(245,158,11,.35);color:color-mix(in srgb, var(--warn) 90%, var(--text))}
+    .m2,.m1{background:rgba(255,77,79,.14);border-color:rgba(255,77,79,.35);color:color-mix(in srgb, var(--danger) 90%, var(--text))}
+    .mN,.mO{background:rgba(160,170,190,.18);border-color:rgba(160,170,190,.35);color:color-mix(in srgb, var(--text) 90%, var(--text))}
+
+    .bannerDanger{
+      border:2px solid #ff0000;
+      background: color-mix(in srgb, #ffeaea 85%, var(--card));
+      border-radius:16px;
+      padding:12px;
+      color:#d10000;
+      font-weight:950;
+      text-align:center;
+      margin-bottom:12px;
+    }
+    body.dark .bannerDanger{ background: rgba(255,0,0,.10); }
+
+    .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <div class="t">Nemoyashkola PRO</div>
+        <div class="s">Firebase • Учитель/Ученик/Родитель • Расписание по датам • Оценки • Задания • Пропуск</div>
+      </div>
+      <div class="row">
+        <button class="btn" id="btnTheme">🌓</button>
+        <button class="btn" id="btnLogout" style="display:none">Выйти</button>
+        <button class="btn d" id="btnReset" style="display:none" title="Удалит ВСЁ из Firebase">Сброс базы</button>
+      </div>
+    </div>
+
+    <div id="app"></div>
+  </div>
+
+  <div class="bottom" id="bottom" style="display:none">
+    <div class="inner">
+      <button class="nav" id="navSchedule">📅 Расписание</button>
+      <button class="nav" id="navGrades">⭐ Оценки</button>
+      <button class="nav" id="navTasks">✅ Задания</button>
+      <button class="nav" id="navSkips">🚫 Пропуск</button>
+    </div>
+  </div>
+
+<script>
+/* =========================
+   0) Firebase init
+   ========================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyB1L56PhFxIWQGNAcp16cSOFgqX_-BGjwE",
+  authDomain: "nemoyashkola.firebaseapp.com",
+  databaseURL: "https://nemoyashkola-default-rtdb.firebaseio.com",
+  projectId: "nemoyashkola",
+  storageBucket: "nemoyashkola.firebasestorage.app",
+  messagingSenderId: "525343937365",
+  appId: "1:525343937365:web:fbbc74257a7ef7936495dc"
+};
+firebase.initializeApp(firebaseConfig);
+const rtdb = firebase.database();
+const ROOT = "nemoyashkola";
+
+/* =========================
+   1) Utils
+   ========================= */
+const $ = (s)=>document.querySelector(s);
+const app = $("#app");
+
+const SETTINGS_KEY = "nemo_settings_v1";
+const SESSION_KEY  = "nemo_session_v1";
+
+const DAYS = [
+  {id:1,name:"Понедельник"},
+  {id:2,name:"Вторник"},
+  {id:3,name:"Среда"},
+  {id:4,name:"Четверг"},
+  {id:5,name:"Пятница"},
+];
+const MONTHS = ["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"];
+
+function esc(s){ return String(s??"").replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;" }[m])); }
+function uid(p="id"){ return p+"_"+Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
+function norm(s){ return (s||"").trim().replace(/\s+/g," "); }
+function pad2(n){ return String(n).padStart(2,"0"); }
+function toISO(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+function fromISO(iso){ const [y,m,d]=iso.split("-").map(Number); return new Date(y,m-1,d); }
+function todayISO(){ return toISO(new Date()); }
+
+function weekdayId(iso){
+  const wd = fromISO(iso).getDay(); // 0..6
+  if(wd===0 || wd===6) return null;
+  return wd; // Mon=1..Fri=5
+}
+function mondayOfWeek(date){
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = (day === 0 ? -6 : 1 - day);
+  d.setDate(d.getDate()+diff);
+  d.setHours(0,0,0,0);
+  return d;
+}
+function weekDates(offset){
+  const base = new Date();
+  base.setDate(base.getDate()+offset*7);
+  const mon = mondayOfWeek(base);
+  const out=[];
+  for(let i=0;i<5;i++){ const x=new Date(mon); x.setDate(x.getDate()+i); out.push(toISO(x)); }
+  return out;
+}
+function weekLabel(monISO){
+  const mon = fromISO(monISO);
+  const fri = new Date(mon); fri.setDate(fri.getDate()+4);
+  return `${mon.getDate()} ${MONTHS[mon.getMonth()]} – ${fri.getDate()} ${MONTHS[fri.getMonth()]}`;
+}
+function dayName(iso){
+  const map={1:"понедельник",2:"вторник",3:"среда",4:"четверг",5:"пятница",6:"суббота",0:"воскресенье"};
+  return map[fromISO(iso).getDay()];
+}
+function genStudentLogin(fullName){
+  const base=(fullName||"").toLowerCase().replace(/ё/g,"е").replace(/[^a-zа-я0-9]+/gi,"").slice(0,10) || "student";
+  return base + Math.floor(1000+Math.random()*9000);
+}
+function genPass(){ return Math.random().toString(36).slice(2,10); }
+
+function markCss(m){
+  if(m==="5") return "m5";
+  if(m==="4") return "m4";
+  if(m==="3") return "m3";
+  if(m==="2") return "m2";
+  if(m==="1") return "m1";
+  if(m==="N") return "mN";
+  if(m==="O") return "mO";
+  return "";
+}
+
+/* =========================
+   2) Theme + Session
+   ========================= */
+function loadSettings(){ try{return JSON.parse(localStorage.getItem(SETTINGS_KEY)||"{}");}catch{return{};} }
+function saveSettings(s){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
+let settings = loadSettings();
+function applyTheme(){ document.body.classList.toggle("dark", settings.theme==="dark"); }
+applyTheme();
+$("#btnTheme").onclick=()=>{
+  settings.theme = (settings.theme==="dark") ? "light" : "dark";
+  saveSettings(settings); applyTheme();
+};
+
+function loadSession(){ try{return JSON.parse(localStorage.getItem(SESSION_KEY)||"null");}catch{return null;} }
+function saveSession(s){ localStorage.setItem(SESSION_KEY, JSON.stringify(s)); }
+function clearSession(){ localStorage.removeItem(SESSION_KEY); }
+
+let session = loadSession(); // {role, id}
+function setSession(s){
+  session=s;
+  if(s) saveSession(s); else clearSession();
+  render();
+}
+
+/* =========================
+   3) DB Model (Firebase RTDB)
+   ========================= */
+function defaultDB(){
+  return {
+    teachers: [],       // {id, login, pass, fullName, className, cabinet, createdAt}
+    students: [],       // {id, teacherId, className, fullName, login, pass, createdAt}
+    parents: [],        // {id, studentId, login, pass, createdAt}
+    subjects: [],       // {id, teacherId, title, teacherName, cabinet, createdAt}
+
+    schedule_base: [],  // {id, teacherId, dayId(1-5), order(1..), subjectId}
+    schedule_overrides:[],// {id, teacherId, date(ISO), lessons:[{order, subjectId}]}
+
+    homeworks: [],      // {id, teacherId, subjectId, date(ISO), text, createdAt}
+    marks: [],          // {id, teacherId, studentId, subjectId, date(ISO), lessonOrder, mark, comment, createdAt}
+
+    taskDone: [],       // {studentId, hwId, done, updatedAt}
+
+    parentCalls: []     // {id, teacherId, studentId, active, createdAt, closedAt?}
+  };
+}
+
+let db=null;
+let dbReady=false;
+let saving=false;
+
+async function ensureRoot(){
+  const snap = await rtdb.ref(ROOT).once("value");
+  if(!snap.exists()) await rtdb.ref(ROOT).set(defaultDB());
+}
+
+function normalizeDB(data){
+  const base=defaultDB();
+  const merged={...base, ...(data||{})};
+  for(const k of Object.keys(base)) if(!Array.isArray(merged[k])) merged[k]=base[k];
+  return merged;
+}
+
+function startSync(){
+  ensureRoot().then(()=>{
+    rtdb.ref(ROOT).on("value",(snap)=>{
+      db = normalizeDB(snap.val());
+      dbReady=true;
+      render();
+    },(err)=>{
+      alert("Firebase read error: "+(err?.message||err));
+    });
+  });
+}
+
+async function saveDB(){
+  if(!dbReady || !db) return;
+  if(saving) return;
+  saving=true;
+  try{
+    await rtdb.ref(ROOT).set(db);
+  } finally {
+    saving=false;
+  }
+}
+
+/* =========================
+   4) Data helpers
+   ========================= */
+function meTeacher(){ return (session?.role==="teacher") ? db.teachers.find(t=>t.id===session.id)||null : null; }
+function meStudent(){ return (session?.role==="student") ? db.students.find(s=>s.id===session.id)||null : null; }
+function meParent(){ return (session?.role==="parent") ? db.parents.find(p=>p.id===session.id)||null : null; }
+
+function teacherOfStudent(student){
+  return db.teachers.find(t=>t.id===student.teacherId)||null;
+}
+function subjectsByTeacher(tid){
+  return db.subjects.filter(s=>s.teacherId===tid).sort((a,b)=>a.title.localeCompare(b.title,'ru'));
+}
+function subjectById(tid, sid){
+  return db.subjects.find(s=>s.teacherId===tid && s.id===sid) || null;
+}
+
+function baseLessonsForDay(tid, dayId){
+  return db.schedule_base
+    .filter(x=>x.teacherId===tid && x.dayId===dayId)
+    .sort((a,b)=>a.order-b.order)
+    .map(x=>({order:x.order, subjectId:x.subjectId}));
+}
+function overrideForDate(tid, iso){
+  return db.schedule_overrides.find(o=>o.teacherId===tid && o.date===iso) || null;
+}
+function lessonsForDate(tid, iso){
+  const ov = overrideForDate(tid, iso);
+  if(ov) return (ov.lessons||[]).slice().sort((a,b)=>a.order-b.order);
+  const dayId = weekdayId(iso);
+  if(!dayId) return [];
+  return baseLessonsForDay(tid, dayId);
+}
+
+function isParentsCalled(studentId){
+  const last = db.parentCalls
+    .filter(c=>c.studentId===studentId)
+    .sort((a,b)=> (b.createdAt||"").localeCompare(a.createdAt||""))[0];
+  return !!last?.active;
+}
+
+async function callParents(tid, studentId){
+  const now = new Date().toISOString();
+  // close old active
+  db.parentCalls = db.parentCalls.map(c=>{
+    if(c.studentId===studentId && c.active) return {...c, active:false, closedAt: now};
+    return c;
+  });
+  db.parentCalls.push({id:uid("pc"), teacherId:tid, studentId, active:true, createdAt:now});
+  await saveDB();
+}
+
+async function cancelCallParents(studentId){
+  const now = new Date().toISOString();
+  db.parentCalls = db.parentCalls.map(c=>{
+    if(c.studentId===studentId && c.active) return {...c, active:false, closedAt:now};
+    return c;
+  });
+  await saveDB();
+}
+
+function hwForTeacherWeek(tid, dates){
+  return db.homeworks.filter(h=>h.teacherId===tid && dates.includes(h.date));
+}
+function marksForStudentWeek(tid, studentId, dates){
+  return db.marks.filter(m=>m.teacherId===tid && m.studentId===studentId && dates.includes(m.date));
+}
+function marksForStudentAll(tid, studentId){
+  return db.marks.filter(m=>m.teacherId===tid && m.studentId===studentId);
+}
+
+function getTaskDone(studentId, hwId){
+  return !!db.taskDone.find(x=>x.studentId===studentId && x.hwId===hwId)?.done;
+}
+async function setTaskDone(studentId, hwId, done){
+  const now=new Date().toISOString();
+  const rec=db.taskDone.find(x=>x.studentId===studentId && x.hwId===hwId);
+  if(rec){ rec.done=!!done; rec.updatedAt=now; }
+  else db.taskDone.push({studentId, hwId, done:!!done, updatedAt:now});
+  await saveDB();
+}
+
+/* =========================
+   5) UI state
+   ========================= */
+const VIEW = { LOGIN:"login", TEACHER:"teacher", STUDENT:"student", PARENT:"parent", TEACHER_SETUP:"t_setup", TEACHER_SUBJECT:"t_subj", TEACHER_SCHEDULE:"t_sched" };
+let view = VIEW.LOGIN;
+
+let teacherTab = "journal"; // journal | schedule | students
+let selectedSubjectId = null;
+
+let studentTab = "grades"; // schedule | grades | tasks | skips
+let weekOffset = 0;
+
+function showBottomNav(on){
+  $("#bottom").style.display = on ? "block" : "none";
+}
+
+function setNavActive(){
+  $("#navSchedule").classList.toggle("on", studentTab==="schedule");
+  $("#navGrades").classList.toggle("on", studentTab==="grades");
+  $("#navTasks").classList.toggle("on", studentTab==="tasks");
+  $("#navSkips").classList.toggle("on", studentTab==="skips");
+}
+
+/* bottom nav events */
+$("#navSchedule").onclick=()=>{ studentTab="schedule"; render(); };
+$("#navGrades").onclick=()=>{ studentTab="grades"; render(); };
+$("#navTasks").onclick=()=>{ studentTab="tasks"; render(); };
+$("#navSkips").onclick=()=>{ studentTab="skips"; render(); };
+
+$("#btnLogout").onclick=()=> setSession(null);
+$("#btnReset").onclick=async ()=>{
+  if(!confirm("Удалить ВСЁ из Firebase (nemoyashkola)?")) return;
+  db = defaultDB();
+  await rtdb.ref(ROOT).set(db);
+  setSession(null);
+};
+
+function ensureView(){
+  if(!session){ view=VIEW.LOGIN; return; }
+  if(session.role==="teacher"){
+    const t=meTeacher();
+    if(!t){ setSession(null); return; }
+    if(!t.fullName || !t.className || !t.cabinet) view=VIEW.TEACHER_SETUP;
+    else if(view===VIEW.LOGIN || view===VIEW.STUDENT || view===VIEW.PARENT) view=VIEW.TEACHER;
+  }
+  if(session.role==="student"){ view=VIEW.STUDENT; }
+  if(session.role==="parent"){ view=VIEW.PARENT; }
+}
+
+/* =========================
+   6) Render
+   ========================= */
+function render(){
+  $("#btnLogout").style.display = session ? "inline-flex" : "none";
+  $("#btnReset").style.display = session ? "inline-flex" : "none";
+
+  if(!dbReady){
+    app.innerHTML = `
+      <div class="card">
+        <div class="title">Подключение к Firebase…</div>
+        <div class="muted" style="margin-top:6">
+          Если висит — проверь Realtime Database Rules (для теста можно read/write = true).
+        </div>
+        <div class="hr"></div>
+        <div class="pill">Путь: <span class="kbd">${esc(ROOT)}</span></div>
+      </div>
+    `;
+    showBottomNav(false);
+    return;
+  }
+
+  ensureView();
+
+  if(view===VIEW.LOGIN){ showBottomNav(false); return renderLogin(); }
+  if(view===VIEW.TEACHER_SETUP){ showBottomNav(false); return renderTeacherSetup(); }
+  if(view===VIEW.TEACHER){ showBottomNav(false); return renderTeacher(); }
+  if(view===VIEW.TEACHER_SUBJECT){ showBottomNav(false); return renderTeacherSubject(); }
+  if(view===VIEW.TEACHER_SCHEDULE){ showBottomNav(false); return renderTeacherSchedule(); }
+  if(view===VIEW.STUDENT){ showBottomNav(true); setNavActive(); return renderStudentLike("student"); }
+  if(view===VIEW.PARENT){ showBottomNav(true); setNavActive(); return renderStudentLike("parent"); }
+}
+
+/* =========================
+   7) Login / Registration
+   ========================= */
+function renderLogin(){
+  app.innerHTML = `
+    <div class="grid2">
+      <div class="card">
+        <div class="title">Вход</div>
+        <div class="muted" style="margin-top:6">Выберите роль и войдите.</div>
+
+        <div class="hr"></div>
+
+        <div class="tabs">
+          <div class="tab on" id="tabLogin">Вход</div>
+          <div class="tab" id="tabReg">Регистрация учителя</div>
+        </div>
+
+        <div class="hr"></div>
+        <div id="box"></div>
+      </div>
+
+      <div class="card">
+        <div class="title">Важно</div>
+        <div class="muted" style="margin-top:8">
+          Это простая версия: логины/пароли хранятся в базе как текст. Для настоящей защиты позже подключим Firebase Auth + строгие Rules.
+        </div>
+        <div class="hr"></div>
+        <div class="pill">Firebase: <span class="kbd">${esc(firebaseConfig.projectId)}</span></div>
+      </div>
+    </div>
+  `;
+
+  let mode="login";
+  $("#tabLogin").onclick=()=>{ mode="login"; paint(); };
+  $("#tabReg").onclick=()=>{ mode="reg"; paint(); };
+
+  function paint(){
+    $("#tabLogin").classList.toggle("on", mode==="login");
+    $("#tabReg").classList.toggle("on", mode==="reg");
+
+    const box=$("#box");
+    if(mode==="login"){
+      box.innerHTML=`
+        <div class="tabs">
+          <div class="tab on" id="rT">Учитель</div>
+          <div class="tab" id="rS">Ученик</div>
+          <div class="tab" id="rP">Родитель</div>
+        </div>
+
+        <div style="margin-top:12px"><input class="input" id="login" placeholder="Логин"></div>
+        <div style="margin-top:10px"><input class="input" id="pass" type="password" placeholder="Пароль"></div>
+
+        <div class="row" style="margin-top:12px">
+          <button class="btn p" id="go">Войти</button>
+        </div>
+
+        <div class="muted" id="err" style="margin-top:10px; display:none; color:var(--danger)"></div>
+      `;
+
+      let role="teacher";
+      const setRole=()=>{
+        $("#rT").classList.toggle("on", role==="teacher");
+        $("#rS").classList.toggle("on", role==="student");
+        $("#rP").classList.toggle("on", role==="parent");
+      };
+      $("#rT").onclick=()=>{ role="teacher"; setRole(); };
+      $("#rS").onclick=()=>{ role="student"; setRole(); };
+      $("#rP").onclick=()=>{ role="parent"; setRole(); };
+
+      $("#go").onclick=()=>{
+        const login=norm($("#login").value);
+        const pass=norm($("#pass").value);
+        const err=$("#err");
+        err.style.display="none";
+
+        if(!login || !pass){ err.textContent="Введите логин и пароль."; err.style.display="block"; return; }
+
+        if(role==="teacher"){
+          const t=db.teachers.find(x=>x.login===login && x.pass===pass);
+          if(!t){ err.textContent="Неверный логин или пароль учителя."; err.style.display="block"; return; }
+          teacherTab="journal"; selectedSubjectId=null;
+          setSession({role:"teacher", id:t.id});
+        }else if(role==="student"){
+          const s=db.students.find(x=>x.login===login && x.pass===pass);
+          if(!s){ err.textContent="Неверный логин или пароль ученика."; err.style.display="block"; return; }
+          studentTab="grades"; weekOffset=0;
+          setSession({role:"student", id:s.id});
+        }else{
+          const p=db.parents.find(x=>x.login===login && x.pass===pass);
+          if(!p){ err.textContent="Неверный логин или пароль родителя."; err.style.display="block"; return; }
+          studentTab="grades"; weekOffset=0;
+          setSession({role:"parent", id:p.id});
+        }
+      };
+    } else {
+      box.innerHTML=`
+        <div class="muted">Создаём аккаунт учителя (логин должен быть уникальный).</div>
+        <div style="margin-top:12px"><input class="input" id="rlogin" placeholder="Логин учителя"></div>
+        <div style="margin-top:10px"><input class="input" id="rpass" type="password" placeholder="Пароль"></div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn p" id="reg">Зарегистрироваться</button>
+        </div>
+        <div class="muted" id="err" style="margin-top:10px; display:none; color:var(--danger)"></div>
+      `;
+      $("#reg").onclick=async ()=>{
+        const login=norm($("#rlogin").value);
+        const pass=norm($("#rpass").value);
+        const err=$("#err");
+        err.style.display="none";
+        if(login.length<3 || pass.length<4){ err.textContent="Логин ≥ 3 символа, пароль ≥ 4."; err.style.display="block"; return; }
+        if(db.teachers.some(t=>t.login===login)){ err.textContent="Этот логин уже занят."; err.style.display="block"; return; }
+
+        const t={id:uid("t"), login, pass, fullName:"", className:"", cabinet:"", createdAt:new Date().toISOString()};
+        db.teachers.push(t);
+        await saveDB();
+        setSession({role:"teacher", id:t.id});
+      };
+    }
+  }
+
+  paint();
+}
+
+/* =========================
+   8) Teacher setup
+   ========================= */
+function renderTeacherSetup(){
+  const t=meTeacher();
+  app.innerHTML=`
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <div class="title">Профиль учителя</div>
+          <div class="muted">Заполни всё один раз — потом можно менять.</div>
+        </div>
+        <div class="pill">Логин: <span class="kbd">${esc(t.login)}</span></div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="grid2">
+        <div>
+          <div class="muted">Класс</div>
+          <input class="input" id="className" placeholder="Например: 7А" value="${esc(t.className||"")}">
+        </div>
+        <div>
+          <div class="muted">Кабинет</div>
+          <input class="input" id="cabinet" placeholder="Например: 12" value="${esc(t.cabinet||"")}">
+        </div>
+      </div>
+
+      <div style="margin-top:12px">
+        <div class="muted">ФИО</div>
+        <input class="input" id="fullName" placeholder="Иванова Мария Петровна" value="${esc(t.fullName||"")}">
+      </div>
+
+      <div class="row" style="margin-top:12px">
+        <button class="btn p" id="save">Сохранить</button>
+      </div>
+
+      <div class="muted" id="err" style="margin-top:10px; display:none; color:var(--danger)"></div>
+    </div>
+  `;
+  $("#save").onclick=async ()=>{
+    const className=norm($("#className").value);
+    const cabinet=norm($("#cabinet").value);
+    const fullName=norm($("#fullName").value);
+    const err=$("#err"); err.style.display="none";
+    if(!className || !cabinet || !fullName){
+      err.textContent="Заполни класс, кабинет и ФИО.";
+      err.style.display="block";
+      return;
+    }
+    t.className=className; t.cabinet=cabinet; t.fullName=fullName;
+    await saveDB();
+    view=VIEW.TEACHER;
+    render();
+  };
+}
+
+/* =========================
+   9) Teacher main
+   ========================= */
+function renderTeacher(){
+  const t=meTeacher();
+  const myStudents = db.students.filter(s=>s.teacherId===t.id).sort((a,b)=>a.fullName.localeCompare(b.fullName,'ru'));
+  const mySubjects = subjectsByTeacher(t.id);
+
+  app.innerHTML=`
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <div class="title">${esc(t.fullName)}</div>
+          <div class="muted">Класс: <b>${esc(t.className)}</b> • Кабинет: <b>${esc(t.cabinet)}</b></div>
+        </div>
+        <div class="tabs">
+          <div class="tab ${teacherTab==="journal"?"on":""}" id="tJournal">Журнал</div>
+          <div class="tab ${teacherTab==="schedule"?"on":""}" id="tSchedule">Расписание</div>
+          <div class="tab ${teacherTab==="students"?"on":""}" id="tStudents">Ученики</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:12px"></div>
+    <div id="teacherBody"></div>
+  `;
+
+  $("#tJournal").onclick=()=>{ teacherTab="journal"; renderTeacher(); };
+  $("#tSchedule").onclick=()=>{ teacherTab="schedule"; renderTeacher(); };
+  $("#tStudents").onclick=()=>{ teacherTab="students"; renderTeacher(); };
+
+  const body=$("#teacherBody");
+
+  if(teacherTab==="journal"){
+    body.innerHTML=`
+      <div class="grid2">
+        <div class="card">
+          <div class="row" style="justify-content:space-between">
+            <div>
+              <div class="title">Предметы</div>
+              <div class="muted">Нажми на предмет → ДЗ + оценки.</div>
+            </div>
+            <button class="btn p" id="addSubj">+ Добавить предмет</button>
+          </div>
+
+          <div class="hr"></div>
+
+          ${mySubjects.length? `<div class="list" id="subsList"></div>` : `<div class="muted">Пока нет предметов. Добавь предмет.</div>`}
+        </div>
+
+        <div class="card">
+          <div class="row" style="justify-content:space-between">
+            <div>
+              <div class="title">Быстро</div>
+              <div class="muted">Добавить ученика, посмотреть логины.</div>
+            </div>
+            <button class="btn p" id="addStudent">+ Добавить ученика</button>
+          </div>
+
+          <div class="hr"></div>
+
+          ${myStudents.length? `<div class="list" id="studList"></div>` : `<div class="muted">Ученики ещё не добавлены.</div>`}
+        </div>
+      </div>
+    `;
+
+    $("#addSubj").onclick=()=>openAddSubject(t.id);
+    $("#addStudent").onclick=()=>openAddStudent(t.id);
+
+    if(mySubjects.length){
+      const list=$("#subsList");
+      list.innerHTML = mySubjects.map(s=>`
+        <div class="item" data-id="${esc(s.id)}" style="cursor:pointer">
+          <div class="h">
+            <div class="l">📘 ${esc(s.title)}</div>
+            <div class="r">каб. ${esc(s.cabinet||t.cabinet)}</div>
+          </div>
+          <div class="sub">Учитель: ${esc(s.teacherName||t.fullName)}</div>
+        </div>
+      `).join("");
+      [...list.querySelectorAll(".item")].forEach(el=>{
+        el.onclick=()=>{
+          selectedSubjectId = el.getAttribute("data-id");
+          view = VIEW.TEACHER_SUBJECT;
+          render();
+        };
+      });
+    }
+
+    if(myStudents.length){
+      const list=$("#studList");
+      list.innerHTML = myStudents.map(s=>`
+        <div class="item">
+          <div class="h">
+            <div class="l">${esc(s.fullName)}</div>
+            <div class="r">логин: <span class="kbd">${esc(s.login)}</span></div>
+          </div>
+          <div class="sub">
+            <button class="btn" data-open="${esc(s.id)}">Открыть</button>
+          </div>
+        </div>
+      `).join("");
+      list.querySelectorAll("button[data-open]").forEach(btn=>{
+        btn.onclick=()=>openStudentCard(t.id, btn.getAttribute("data-open"));
+      });
+    }
+  }
+
+  if(teacherTab==="schedule"){
+    body.innerHTML=`
+      <div class="grid2">
+        <div class="card">
+          <div class="title">Базовое расписание (Пн–Пт)</div>
+          <div class="muted" style="margin-top:6">Это “шаблон”. Если расписание поменялось на конкретную дату — используем “По дате”.</div>
+          <div class="hr"></div>
+          <button class="btn p" id="editBase">Редактировать базовое</button>
+        </div>
+
+        <div class="card">
+          <div class="title">Расписание по дате</div>
+          <div class="muted" style="margin-top:6">Задай расписание на конкретный день (если замены/изменения).</div>
+          <div class="hr"></div>
+          <div class="row">
+            <input class="input" id="datePick" type="date" value="${todayISO()}">
+            <button class="btn p" id="editDate">Открыть</button>
+          </div>
+        </div>
+      </div>
+    `;
+    $("#editBase").onclick=()=>{ view=VIEW.TEACHER_SCHEDULE; render(); };
+    $("#editDate").onclick=()=>{
+      const iso=$("#datePick").value || todayISO();
+      openEditScheduleForDate(t.id, iso);
+    };
+  }
+
+  if(teacherTab==="students"){
+    body.innerHTML=`
+      <div class="card">
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <div class="title">Ученики</div>
+            <div class="muted">Открой ученика, чтобы увидеть логин/пароль и вызвать родителей.</div>
+          </div>
+          <button class="btn p" id="addStudent2">+ Добавить ученика</button>
+        </div>
+        <div class="hr"></div>
+        ${myStudents.length? `<div class="list" id="studList2"></div>` : `<div class="muted">Пока нет учеников.</div>`}
+      </div>
+    `;
+    $("#addStudent2").onclick=()=>openAddStudent(t.id);
+    if(myStudents.length){
+      const list=$("#studList2");
+      list.innerHTML = myStudents.map(s=>`
+        <div class="item">
+          <div class="h">
+            <div class="l">${esc(s.fullName)}</div>
+            <div class="r">логин: <span class="kbd">${esc(s.login)}</span></div>
+          </div>
+          <div class="sub">
+            <button class="btn" data-open="${esc(s.id)}">Открыть</button>
+          </div>
+        </div>
+      `).join("");
+      list.querySelectorAll("button[data-open]").forEach(btn=>{
+        btn.onclick=()=>openStudentCard(t.id, btn.getAttribute("data-open"));
+      });
+    }
+  }
+}
+
+/* =========================
+   Teacher: Modals (simple)
+   ========================= */
+function modal(html){
+  // ultra-simple modal using native <dialog> fallback
+  let dlg = document.querySelector("dialog#dlg");
+  if(!dlg){
+    dlg=document.createElement("dialog");
+    dlg.id="dlg";
+    dlg.style.border="none";
+    dlg.style.padding="0";
+    dlg.style.borderRadius="18px";
+    dlg.style.width="min(980px, calc(100vw - 24px))";
+    dlg.style.boxShadow="0 18px 60px rgba(0,0,0,.35)";
+    dlg.addEventListener("click",(e)=>{ if(e.target===dlg) dlg.close(); });
+    document.body.appendChild(dlg);
+  }
+  dlg.innerHTML = `<div class="card" style="margin:0">${html}</div>`;
+  dlg.showModal();
+  return dlg;
+}
+
+function openAddSubject(teacherId){
+  const t=meTeacher();
+  const dlg=modal(`
+    <div class="row" style="justify-content:space-between">
+      <div class="title">Добавить предмет</div>
+      <button class="btn" id="x">✕</button>
+    </div>
+    <div class="hr"></div>
+    <div class="muted">Автоматически запишется учитель и кабинет.</div>
+    <div style="margin-top:12px">
+      <input class="input" id="title" placeholder="Название предмета (например: Математика)">
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn p" id="add">Добавить</button>
+    </div>
+  `);
+  dlg.querySelector("#x").onclick=()=>dlg.close();
+  dlg.querySelector("#add").onclick=async ()=>{
+    const title=norm(dlg.querySelector("#title").value);
+    if(!title){ alert("Введите название предмета"); return; }
+    db.subjects.push({
+      id:uid("sub"),
+      teacherId,
+      title,
+      teacherName:t.fullName,
+      cabinet:t.cabinet,
+      createdAt:new Date().toISOString()
+    });
+    await saveDB();
+    dlg.close();
+    render();
+  };
+}
+
+function openAddStudent(teacherId){
+  const t=meTeacher();
+  const dlg=modal(`
+    <div class="row" style="justify-content:space-between">
+      <div class="title">Добавить ученика</div>
+      <button class="btn" id="x">✕</button>
+    </div>
+    <div class="hr"></div>
+
+    <div class="muted">Класс выставится автоматически: <b>${esc(t.className)}</b></div>
+
+    <div style="margin-top:12px">
+      <input class="input" id="fio" placeholder="ФИО ученика">
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <button class="btn p" id="add">Создать</button>
+    </div>
+
+    <div class="hr"></div>
+    <div id="creds" style="display:none"></div>
+  `);
+  dlg.querySelector("#x").onclick=()=>dlg.close();
+  dlg.querySelector("#add").onclick=async ()=>{
+    const fio=norm(dlg.querySelector("#fio").value);
+    if(!fio){ alert("Введите ФИО"); return; }
+
+    const login=genStudentLogin(fio);
+    const pass=genPass();
+    const sid=uid("s");
+
+    db.students.push({
+      id:sid,
+      teacherId,
+      className:t.className,
+      fullName:fio,
+      login, pass,
+      createdAt:new Date().toISOString()
+    });
+
+    // create parent account too (optional but useful)
+    const plogin = "parent"+Math.floor(1000+Math.random()*9000);
+    const ppass  = genPass();
+    db.parents.push({
+      id:uid("p"),
+      studentId:sid,
+      login:plogin,
+      pass:ppass,
+      createdAt:new Date().toISOString()
+    });
+
+    await saveDB();
+
+    const c=dlg.querySelector("#creds");
+    c.style.display="block";
+    c.innerHTML=`
+      <div class="title" style="font-size:16px">Данные созданы</div>
+      <div class="muted" style="margin-top:6">Ученик:</div>
+      <div class="pill">логин: <span class="kbd">${esc(login)}</span> • пароль: <span class="kbd">${esc(pass)}</span></div>
+      <div class="muted" style="margin-top:10px">Родитель:</div>
+      <div class="pill">логин: <span class="kbd">${esc(plogin)}</span> • пароль: <span class="kbd">${esc(ppass)}</span></div>
+    `;
+    dlg.querySelector("#add").disabled=true;
+  };
+}
+
+function openStudentCard(teacherId, studentId){
+  const s=db.students.find(x=>x.id===studentId && x.teacherId===teacherId);
+  if(!s){ alert("Ученик не найден"); return; }
+  const called=isParentsCalled(studentId);
+
+  const dlg=modal(`
+    <div class="row" style="justify-content:space-between">
+      <div>
+        <div class="title">${esc(s.fullName)}</div>
+        <div class="muted">Класс: <b>${esc(s.className)}</b></div>
+      </div>
+      <button class="btn" id="x">✕</button>
+    </div>
+    <div class="hr"></div>
+
+    <div class="item">
+      <div class="h">
+        <div class="l">Логин</div>
+        <div class="r"><span class="kbd">${esc(s.login)}</span></div>
+      </div>
+    </div>
+
+    <div style="height:10px"></div>
+
+    <div class="item">
+      <div class="h">
+        <div class="l">Пароль</div>
+        <div class="r"><span class="kbd">${esc(s.pass)}</span></div>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="row">
+      <button class="btn d" id="call">${called?"Родителей уже вызвали (отменить)":"Вызвать родителей в школу"}</button>
+    </div>
+
+    <div class="muted" style="margin-top:10px">
+      При вызове у ученика появится красное сообщение в вкладке «Пропуск».
+    </div>
+  `);
+  dlg.querySelector("#x").onclick=()=>dlg.close();
+  dlg.querySelector("#call").onclick=async ()=>{
+    if(isParentsCalled(studentId)){
+      await cancelCallParents(studentId);
+      alert("Вызов родителей отменён.");
+    } else {
+      await callParents(teacherId, studentId);
+      alert("Родители вызваны.");
+    }
+    dlg.close();
+    render();
+  };
+}
+
+/* =========================
+   Teacher: Schedule editors
+   ========================= */
+function renderTeacherSchedule(){
+  const t=meTeacher();
+  const subs = subjectsByTeacher(t.id);
+
+  app.innerHTML=`
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <div class="title">Базовое расписание</div>
+          <div class="muted">Редактируй Пн–Пт. Кол-во уроков — сколько добавишь.</div>
+        </div>
+        <div class="row">
+          <button class="btn" id="back">← Назад</button>
+          <button class="btn p" id="save">Сохранить</button>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="muted">Если на день нет уроков — оставь пусто.</div>
+
+      <div class="hr"></div>
+
+      <div id="days"></div>
+    </div>
+  `;
+
+  $("#back").onclick=()=>{ view=VIEW.TEACHER; teacherTab="schedule"; render(); };
+
+  const daysBox=$("#days");
+  const maxRows = 10; // можно больше, но пусть будет 10
+  daysBox.innerHTML = DAYS.map(d=>{
+    const rows = [];
+    for(let i=1;i<=maxRows;i++){
+      const existing = db.schedule_base.find(x=>x.teacherId===t.id && x.dayId===d.id && x.order===i);
+      const val = existing?.subjectId || "";
+      rows.push(`
+        <div class="row" style="margin-top:8px">
+          <div class="pill" style="min-width:78px;justify-content:center">Урок ${i}</div>
+          <select class="select" data-day="${d.id}" data-order="${i}">
+            <option value="">— нет —</option>
+            ${subs.map(s=>`<option value="${esc(s.id)}" ${s.id===val?"selected":""}>${esc(s.title)}</option>`).join("")}
+          </select>
+        </div>
+      `);
+    }
+    return `
+      <div class="item" style="margin-bottom:12px">
+        <div class="title" style="font-size:16px">${esc(d.name)}</div>
+        ${rows.join("")}
+      </div>
+    `;
+  }).join("");
+
+  $("#save").onclick=async ()=>{
+    // remove existing base for teacher
+    db.schedule_base = db.schedule_base.filter(x=>x.teacherId!==t.id);
+
+    daysBox.querySelectorAll("select[data-day]").forEach(sel=>{
+      const dayId = Number(sel.getAttribute("data-day"));
+      const order = Number(sel.getAttribute("data-order"));
+      const sid = sel.value || "";
+      if(!sid) return;
+      db.schedule_base.push({id:uid("sb"), teacherId:t.id, dayId, order, subjectId:sid});
+    });
+
+    await saveDB();
+    alert("Базовое расписание сохранено.");
+    view=VIEW.TEACHER;
+    teacherTab="schedule";
+    render();
+  };
+}
+
+function openEditScheduleForDate(teacherId, iso){
+  const t=meTeacher();
+  const subs = subjectsByTeacher(teacherId);
+  const dayId = weekdayId(iso);
+  if(!dayId){ alert("Это выходной (суббота/воскресенье)."); return; }
+
+  const existing = overrideForDate(teacherId, iso);
+  const base = lessonsForDate(teacherId, iso); // already override if exists
+  const maxRows = 10;
+
+  const dlg=modal(`
+    <div class="row" style="justify-content:space-between">
+      <div>
+        <div class="title">Расписание на дату</div>
+        <div class="muted">${esc(iso)} • ${esc(dayName(iso))}</div>
+      </div>
+      <button class="btn" id="x">✕</button>
+    </div>
+    <div class="hr"></div>
+
+    <div id="rows"></div>
+
+    <div class="hr"></div>
+    <div class="row">
+      <button class="btn p" id="save">Сохранить</button>
+      <button class="btn d" id="del" ${existing?"":"disabled"}>Удалить override</button>
+    </div>
+  `);
+
+  dlg.querySelector("#x").onclick=()=>dlg.close();
+
+  const rowsBox=dlg.querySelector("#rows");
+  rowsBox.innerHTML = Array.from({length:maxRows},(_,idx)=>{
+    const order=idx+1;
+    const cur = base.find(x=>x.order===order)?.subjectId || "";
+    return `
+      <div class="row" style="margin-top:8px">
+        <div class="pill" style="min-width:78px;justify-content:center">Урок ${order}</div>
+        <select class="select" data-order="${order}">
+          <option value="">— нет —</option>
+          ${subs.map(s=>`<option value="${esc(s.id)}" ${s.id===cur?"selected":""}>${esc(s.title)}</option>`).join("")}
+        </select>
+      </div>
+    `;
+  }).join("");
+
+  dlg.querySelector("#save").onclick=async ()=>{
+    const lessons=[];
+    rowsBox.querySelectorAll("select[data-order]").forEach(sel=>{
+      const order=Number(sel.getAttribute("data-order"));
+      const sid=sel.value || "";
+      if(!sid) return;
+      lessons.push({order, subjectId:sid});
+    });
+
+    // upsert override
+    const idx = db.schedule_overrides.findIndex(o=>o.teacherId===teacherId && o.date===iso);
+    if(idx>=0) db.schedule_overrides[idx] = {...db.schedule_overrides[idx], lessons};
+    else db.schedule_overrides.push({id:uid("ov"), teacherId, date:iso, lessons});
+
+    await saveDB();
+    dlg.close();
+    alert("Сохранено.");
+  };
+
+  dlg.querySelector("#del").onclick=async ()=>{
+    if(!confirm("Удалить расписание по дате? Вернётся базовое.")) return;
+    db.schedule_overrides = db.schedule_overrides.filter(o=>!(o.teacherId===teacherId && o.date===iso));
+    await saveDB();
+    dlg.close();
+  };
+}
+
+/* =========================
+   10) Teacher: Subject page
+   ========================= */
+function renderTeacherSubject(){
+  const t=meTeacher();
+  const subj = subjectById(t.id, selectedSubjectId);
+  if(!subj){ view=VIEW.TEACHER; teacherTab="journal"; render(); return; }
+
+  const myStudents = db.students.filter(s=>s.teacherId===t.id).sort((a,b)=>a.fullName.localeCompare(b.fullName,'ru'));
+  const iso = todayISO();
+
+  app.innerHTML=`
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <div class="title">📘 ${esc(subj.title)}</div>
+          <div class="muted">Класс: <b>${esc(t.className)}</b> • Каб: <b>${esc(subj.cabinet||t.cabinet)}</b></div>
+        </div>
+        <div class="row">
+          <button class="btn" id="back">← Назад</button>
+          <button class="btn p" id="addHW">+ Добавить ДЗ</button>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="row" style="align-items:flex-end">
+        <div style="flex:1">
+          <div class="muted">Дата урока</div>
+          <input class="input" id="date" type="date" value="${esc(iso)}">
+        </div>
+        <div style="flex:1">
+          <div class="muted">Номер урока (для нескольких оценок за урок)</div>
+          <input class="input" id="lessonOrder" type="number" min="1" max="10" value="1">
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="title" style="font-size:16px">Ученики</div>
+      <div class="muted">Нажимай “+ Оценка”, можно добавлять несколько оценок за один урок.</div>
+
+      <div class="hr"></div>
+      <div class="list" id="studs"></div>
+    </div>
+  `;
+
+  $("#back").onclick=()=>{ view=VIEW.TEACHER; teacherTab="journal"; selectedSubjectId=null; render(); };
+
+  $("#addHW").onclick=()=>{
+    const date=$("#date").value || todayISO();
+    openAddHomework(t.id, subj.id, date);
+  };
+
+  const list=$("#studs");
+  list.innerHTML = myStudents.map(s=>{
+    return `
+      <div class="item">
+        <div class="h">
+          <div class="l">${esc(s.fullName)}</div>
+          <div class="r">логин: <span class="kbd">${esc(s.login)}</span></div>
+        </div>
+        <div class="sub row" style="margin-top:10px">
+          <button class="btn p" data-add="${esc(s.id)}">+ Оценка</button>
+          <button class="btn" data-view="${esc(s.id)}">Посмотреть</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  list.querySelectorAll("button[data-add]").forEach(btn=>{
+    btn.onclick=()=> {
+      const studentId=btn.getAttribute("data-add");
+      const date=$("#date").value || todayISO();
+      const lessonOrder = Math.max(1, Math.min(10, Number($("#lessonOrder").value||1)));
+      openAddMark(t.id, subj.id, studentId, date, lessonOrder);
+    };
+  });
+  list.querySelectorAll("button[data-view]").forEach(btn=>{
+    btn.onclick=()=> {
+      const studentId=btn.getAttribute("data-view");
+      openStudentMarks(t.id, subj.id, studentId);
+    };
+  });
+}
+
+function openAddHomework(teacherId, subjectId, date){
+  const subj=subjectById(teacherId, subjectId);
+  const dlg=modal(`
+    <div class="row" style="justify-content:space-between">
+      <div>
+        <div class="title">Добавить ДЗ</div>
+        <div class="muted">${esc(subj?.title||"")} • ${esc(date)}</div>
+      </div>
+      <button class="btn" id="x">✕</button>
+    </div>
+    <div class="hr"></div>
+    <textarea class="ta" id="text" rows="5" placeholder="Введите домашнее задание..."></textarea>
+    <div class="row" style="margin-top:12px">
+      <button class="btn p" id="save">Сохранить</button>
+    </div>
+  `);
+  dlg.querySelector("#x").onclick=()=>dlg.close();
+  dlg.querySelector("#save").onclick=async ()=>{
+    const text=norm(dlg.querySelector("#text").value);
+    if(!text){ alert("Введите текст ДЗ"); return; }
+    db.homeworks.push({id:uid("hw"), teacherId, subjectId, date, text, createdAt:new Date().toISOString()});
+    await saveDB();
+    dlg.close();
+  };
+}
+
+function openAddMark(teacherId, subjectId, studentId, date, lessonOrder){
+  const s = db.students.find(x=>x.id===studentId);
+  const subj = subjectById(teacherId, subjectId);
+  const dlg=modal(`
+    <div class="row" style="justify-content:space-between">
+      <div>
+        <div class="title">Оценка</div>
+        <div class="muted">${esc(s?.fullName||"")} • ${esc(subj?.title||"")} • ${esc(date)} • урок ${lessonOrder}</div>
+      </div>
+      <button class="btn" id="x">✕</button>
+    </div>
+    <div class="hr"></div>
+
+    <div class="grid2">
+      <div>
+        <div class="muted">Оценка</div>
+        <select class="select" id="mark">
+          <option value="5">5</option>
+          <option value="4">4</option>
+          <option value="3">3</option>
+          <option value="2">2</option>
+          <option value="1">1</option>
+          <option value="N">N (пропуск/болезнь)</option>
+          <option value="O">O (освоб.)</option>
+        </select>
+      </div>
+      <div>
+        <div class="muted">Комментарий</div>
+        <input class="input" id="c" placeholder="Комментарий (необязательно)">
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <button class="btn p" id="save">Добавить</button>
+    </div>
+  `);
+  dlg.querySelector("#x").onclick=()=>dlg.close();
+  dlg.querySelector("#save").onclick=async ()=>{
+    const mark=dlg.querySelector("#mark").value;
+    const comment=norm(dlg.querySelector("#c").value);
+    db.marks.push({
+      id:uid("m"),
+      teacherId, studentId, subjectId,
+      date,
+      lessonOrder,
+      mark,
+      comment,
+      createdAt:new Date().toISOString()
+    });
+    await saveDB();
+    dlg.close();
+  };
+}
+
+function openStudentMarks(teacherId, subjectId, studentId){
+  const s = db.students.find(x=>x.id===studentId);
+  const subj = subjectById(teacherId, subjectId);
+
+  const marks = db.marks
+    .filter(m=>m.teacherId===teacherId && m.studentId===studentId && m.subjectId===subjectId)
+    .sort((a,b)=> (b.date+a.createdAt).localeCompare(a.date+b.createdAt));
+
+  const dlg=modal(`
+    <div class="row" style="justify-content:space-between">
+      <div>
+        <div class="title">${esc(s?.fullName||"")}</div>
+        <div class="muted">${esc(subj?.title||"")}</div>
+      </div>
+      <button class="btn" id="x">✕</button>
+    </div>
+    <div class="hr"></div>
+
+    ${marks.length ? `<div class="list" id="ml"></div>` : `<div class="muted">Нет оценок.</div>`}
+  `);
+  dlg.querySelector("#x").onclick=()=>dlg.close();
+
+  if(marks.length){
+    const ml=dlg.querySelector("#ml");
+    ml.innerHTML = marks.map(m=>`
+      <div class="item">
+        <div class="h">
+          <div class="l">${esc(m.date)} • урок ${esc(m.lessonOrder||1)}</div>
+          <div class="r"><span class="m ${markCss(m.mark)}">${esc(m.mark)}</span></div>
+        </div>
+        ${m.comment? `<div class="sub">Комментарий: ${esc(m.comment)}</div>` : ``}
+        <div class="sub row" style="margin-top:10px">
+          <button class="btn d" data-del="${esc(m.id)}">Удалить</button>
+        </div>
+      </div>
+    `).join("");
+
+    ml.querySelectorAll("button[data-del]").forEach(btn=>{
+      btn.onclick=async ()=>{
+        const id=btn.getAttribute("data-del");
+        if(!confirm("Удалить оценку?")) return;
+        db.marks = db.marks.filter(x=>x.id!==id);
+        await saveDB();
+        dlg.close();
+      };
+    });
+  }
+}
+
+/* =========================
+   11) Student / Parent view
+   ========================= */
+function renderStudentLike(kind){
+  const student = (kind==="student") ? meStudent() : (()=>{
+    const p=meParent();
+    return p ? db.students.find(s=>s.id===p.studentId)||null : null;
+  })();
+  if(!student){ app.innerHTML=`<div class="card"><div class="title">Нет доступа</div></div>`; return; }
+
+  const teacher = teacherOfStudent(student);
+  const called = isParentsCalled(student.id);
+
+  const dates = weekDates(weekOffset);
+  const mondayISO = dates[0];
+
+  const head = `
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <div class="title">${esc(student.fullName)}</div>
+          <div class="muted">
+            ${kind==="parent" ? "Родитель" : "Ученик"} •
+            Класс: <b>${esc(student.className)}</b> •
+            Учитель: <b>${esc(teacher?.fullName||"—")}</b>
+          </div>
+        </div>
+        <div class="row">
+          <div class="pill">${esc(weekLabel(mondayISO))}</div>
+          <button class="btn" id="prev">‹</button>
+          <button class="btn" id="next">›</button>
+          <button class="btn" id="today">Сегодня</button>
+        </div>
+      </div>
+    </div>
+    <div style="height:12px"></div>
+  `;
+
+  // banner: show on "skips" and also at top (requested)
+  const banner = (called && (studentTab==="skips")) ? `
+    <div class="bannerDanger">
+      ВАШИХ РОДИТЕЛЕЙ ВЫЗВАЛИ В ШКОЛУ, ХАХАХАХА
+    </div>
+  ` : ``;
+
+  app.innerHTML = head + banner + `<div id="body"></div>`;
+
+  $("#prev").onclick=()=>{ weekOffset--; render(); };
+  $("#next").onclick=()=>{ weekOffset++; render(); };
+  $("#today").onclick=()=>{ weekOffset=0; render(); };
+
+  const body=$("#body");
+  const tid = student.teacherId;
+
+  if(studentTab==="schedule"){
+    body.innerHTML = `
+      <div class="card">
+        <div class="title">Расписание</div>
+        <div class="muted">Показывается по датам (если учитель менял расписание на конкретный день — отобразится замена).</div>
+        <div class="hr"></div>
+        <div class="list">
+          ${dates.map(iso=>{
+            const lessons = lessonsForDate(tid, iso);
+            const show = lessons.length
+              ? lessons.map(l=>{
+                  const sub = subjectById(tid, l.subjectId);
+                  return `<div class="item" style="margin-top:8px">
+                    <div class="h">
+                      <div class="l">${esc(l.order)}. ${esc(sub?.title||"—")}</div>
+                      <div class="r">${esc(sub?.teacherName||teacher?.fullName||"—")}</div>
+                    </div>
+                  </div>`;
+                }).join("")
+              : `<div class="muted" style="margin-top:8px">Нет уроков</div>`;
+            return `
+              <div class="item">
+                <div class="h">
+                  <div class="l">${esc(iso)} (${esc(dayName(iso))})</div>
+                  <div class="r"></div>
+                </div>
+                <div style="margin-top:8px">${show}</div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  if(studentTab==="tasks"){
+    const hws = hwForTeacherWeek(tid, dates).sort((a,b)=> (b.date+b.createdAt).localeCompare(a.date+a.createdAt));
+    body.innerHTML = `
+      <div class="card">
+        <div class="title">Задания (ДЗ)</div>
+        <div class="muted">ДЗ показывает учитель. ${kind==="student" ? "Можно отмечать выполнено." : "Родитель видит только просмотр."}</div>
+        <div class="hr"></div>
+
+        ${hws.length ? `<div class="list" id="hws"></div>` : `<div class="muted">На этой неделе нет заданий.</div>`}
+      </div>
+    `;
+
+    if(hws.length){
+      const box=$("#hws");
+      box.innerHTML = hws.map(h=>{
+        const sub = subjectById(tid, h.subjectId);
+        const done = getTaskDone(student.id, h.id);
+        return `
+          <div class="item">
+            <div class="h">
+              <div class="l">${esc(h.date)} • ${esc(sub?.title||"—")}</div>
+              <div class="r">${done ? "✅" : ""}</div>
+            </div>
+            <div class="sub" style="margin-top:8px">${esc(h.text)}</div>
+            ${kind==="student" ? `
+              <div class="row" style="margin-top:10px">
+                <button class="btn ${done?"ok":"p"}" data-done="${esc(h.id)}">${done?"Выполнено":"Отметить выполнено"}</button>
+              </div>
+            ` : ``}
+          </div>
+        `;
+      }).join("");
+
+      if(kind==="student"){
+        box.querySelectorAll("button[data-done]").forEach(btn=>{
+          btn.onclick=async ()=>{
+            const id=btn.getAttribute("data-done");
+            const now = !getTaskDone(student.id, id);
+            await setTaskDone(student.id, id, now);
+          };
+        });
+      }
+    }
+  }
+
+  if(studentTab==="grades" || studentTab==="skips"){
+    const marks = marksForStudentWeek(tid, student.id, dates);
+
+    // group by date -> lessonOrder -> subject
+    const byDate = {};
+    for(const m of marks){
+      (byDate[m.date] ||= []).push(m);
+    }
+
+    function renderDay(iso, onlySkips){
+      const arr = (byDate[iso]||[]).slice()
+        .sort((a,b)=> (a.lessonOrder||1)-(b.lessonOrder||1) || (a.createdAt||"").localeCompare(b.createdAt||""));
+
+      // group: key = subjectId + "|" + lessonOrder
+      const groups = {};
+      for(const m of arr){
+        if(onlySkips && !(m.mark==="N" || m.mark==="O")) continue;
+        const key = `${m.subjectId}|${m.lessonOrder||1}`;
+        (groups[key] ||= []).push(m);
+      }
+
+      const keys = Object.keys(groups);
+      if(!keys.length){
+        return `
+          <div class="item">
+            <div class="h">
+              <div class="l">${esc(iso)} (${esc(dayName(iso))})</div>
+              <div class="r"></div>
+            </div>
+            <div class="sub" style="margin-top:8px">Нет ${onlySkips?"пропусков":"оценок"}.</div>
+          </div>
+        `;
+      }
+
+      // sort groups by lessonOrder
+      keys.sort((a,b)=>{
+        const ao=Number(a.split("|")[1]||1);
+        const bo=Number(b.split("|")[1]||1);
+        return ao-bo;
+      });
+
+      const rows = keys.map(k=>{
+        const [subjectId, orderStr] = k.split("|");
+        const order = Number(orderStr||1);
+        const sub = subjectById(tid, subjectId);
+        const ms = groups[k];
+        return `
+          <div class="item" style="margin-top:8px">
+            <div class="h">
+              <div class="l">${esc(sub?.title||"—")} • урок ${order}</div>
+              <div class="r">${esc(sub?.teacherName||teacher?.fullName||"—")}</div>
+            </div>
+            <div class="marks">
+              ${ms.map(x=>`
+                <span class="m ${markCss(x.mark)}" title="${esc(x.comment||"")}">${esc(x.mark)}${x.comment? " ·":""}</span>
+              `).join("")}
+            </div>
+            ${ms.some(x=>x.comment) ? `
+              <div class="sub" style="margin-top:8px">
+                ${ms.filter(x=>x.comment).map(x=>`• ${esc(x.comment)}`).join("<br>")}
+              </div>
+            ` : ``}
+          </div>
+        `;
+      }).join("");
+
+      return `
+        <div class="item">
+          <div class="h">
+            <div class="l">${esc(iso)} (${esc(dayName(iso))})</div>
+            <div class="r"></div>
+          </div>
+          <div style="margin-top:8px">${rows}</div>
+        </div>
+      `;
+    }
+
+    const onlySkips = (studentTab==="skips");
+    body.innerHTML = `
+      <div class="card">
+        <div class="title">${onlySkips ? "Пропуск" : "Оценки"}</div>
+        <div class="muted">${onlySkips ? "Тут только N / O и подобные." : "Можно несколько оценок за один урок."}</div>
+        <div class="hr"></div>
+        <div class="list">
+          ${dates.map(iso=>renderDay(iso, onlySkips)).join("")}
+        </div>
+        ${onlySkips && isParentsCalled(student.id) ? `
+          <div class="hr"></div>
+          <div class="row">
+            <div class="pill">⚠️ Дисциплина активна</div>
+          </div>
+        ` : ``}
+      </div>
+    `;
+  }
+}
+
+/* =========================
+   12) Boot
+   ========================= */
+function updateBottomVisibility(){
+  showBottomNav(session?.role==="student" || session?.role==="parent");
+  if(session?.role==="student" || session?.role==="parent") setNavActive();
+}
+
+function renderWithBottom(){
+  updateBottomVisibility();
+  render();
+}
+
+/* update bottom when changing tab */
+function hookBottom(){
+  // re-run after each render, simple
+  updateBottomVisibility();
+}
+
+const oldRender = render;
+render = function(){ oldRender(); hookBottom(); };
+
+startSync();
+render();
+
+/* =========================
+   NOTE:
+   For testing Rules you can set:
+   {
+     "rules": { ".read": true, ".write": true }
+   }
+   Then later we can secure it.
+   ========================= */
+</script>
+</body>
+</html>
