@@ -1706,7 +1706,14 @@ function hookBottom(){
 }
 
 const oldRender = render;
-render = function(){ oldRender(); hookBottom(); };
+const oldRender = render;
+render = function(){
+  oldRender();
+  hookBottom();
+};
+
+startSync();
+render();
 
 startSync();
 render();
