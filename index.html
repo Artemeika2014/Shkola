@@ -197,6 +197,10 @@
 
 <script>
 /* =========================
+   PART 1/4
+   ========================= */
+
+/* =========================
    0) Firebase init
    ========================= */
 const firebaseConfig = {
@@ -211,6 +215,9 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const rtdb = firebase.database();
 const ROOT = "nemoyashkola";
+
+/* 🔐 Пароль сброса базы */
+const RESET_PASSWORD = "LOMTIKmilkiway67";
 
 /* =========================
    1) Utils
@@ -320,7 +327,8 @@ function defaultDB(){
     subjects: [],       // {id, teacherId, title, teacherName, cabinet, createdAt}
 
     schedule_base: [],  // {id, teacherId, dayId(1-5), order(1..), subjectId}
-    schedule_overrides:[],// {id, teacherId, date(ISO), lessons:[{order, subjectId}]}
+    // override: lessons: [{order, subjectId, teacherNameOverride?, cabinetOverride?}]
+    schedule_overrides:[],// {id, teacherId, date(ISO), lessons:[...]}
 
     homeworks: [],      // {id, teacherId, subjectId, date(ISO), text, createdAt}
     marks: [],          // {id, teacherId, studentId, subjectId, date(ISO), lessonOrder, mark, comment, createdAt}
@@ -481,19 +489,16 @@ $("#navGrades").onclick=()=>{ studentTab="grades"; render(); };
 $("#navTasks").onclick=()=>{ studentTab="tasks"; render(); };
 $("#navSkips").onclick=()=>{ studentTab="skips"; render(); };
 
+$("#btnLogout").onclick=()=> setSession(null);
+
+/* парольный сброс базы */
 $("#btnReset").onclick=async ()=>{
-  const pass = prompt("Введите пароль для сброса базы:");
-  if(pass !== "MRCHUPAPnotNEGERS6767?!?!"){
-    alert("Неверный пароль!");
-    return;
-  }
-
-  if(!confirm("Вы уверены? Это удалит ВСЮ базу данных!")) return;
-
+  const p = prompt("Пароль для сброса базы:");
+  if(p !== RESET_PASSWORD){ alert("Неверный пароль!"); return; }
+  if(!confirm("Удалить ВСЁ из Firebase (nemoyashkola)?")) return;
   db = defaultDB();
   await rtdb.ref(ROOT).set(db);
-
-  alert("База данных полностью очищена!");
+  alert("База очищена.");
   setSession(null);
 };
 
@@ -510,7 +515,7 @@ function ensureView(){
 }
 
 /* =========================
-   6) Render
+   6) Render (старт)
    ========================= */
 function render(){
   $("#btnLogout").style.display = session ? "inline-flex" : "none";
@@ -541,6 +546,10 @@ function render(){
   if(view===VIEW.STUDENT){ showBottomNav(true); setNavActive(); return renderStudentLike("student"); }
   if(view===VIEW.PARENT){ showBottomNav(true); setNavActive(); return renderStudentLike("parent"); }
 }
+  <script>
+/* =========================
+   PART 2/4
+   ========================= */
 
 /* =========================
    7) Login / Registration
@@ -723,6 +732,185 @@ function renderTeacherSetup(){
 }
 
 /* =========================
+   Teacher: Modals (simple)
+   ========================= */
+function modal(html){
+  let dlg = document.querySelector("dialog#dlg");
+  if(!dlg){
+    dlg=document.createElement("dialog");
+    dlg.id="dlg";
+    dlg.style.border="none";
+    dlg.style.padding="0";
+    dlg.style.borderRadius="18px";
+    dlg.style.width="min(980px, calc(100vw - 24px))";
+    dlg.style.boxShadow="0 18px 60px rgba(0,0,0,.35)";
+    dlg.addEventListener("click",(e)=>{ if(e.target===dlg) dlg.close(); });
+    document.body.appendChild(dlg);
+  }
+  dlg.innerHTML = `<div class="card" style="margin:0">${html}</div>`;
+  dlg.showModal();
+  return dlg;
+}
+
+function openAddSubject(teacherId){
+  const t=meTeacher();
+  const dlg=modal(`
+    <div class="row" style="justify-content:space-between">
+      <div class="title">Добавить предмет</div>
+      <button class="btn" id="x">✕</button>
+    </div>
+    <div class="hr"></div>
+    <div class="muted">Автоматически запишется учитель и кабинет.</div>
+    <div style="margin-top:12px">
+      <input class="input" id="title" placeholder="Название предмета (например: Математика)">
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn p" id="add">Добавить</button>
+    </div>
+  `);
+  dlg.querySelector("#x").onclick=()=>dlg.close();
+  dlg.querySelector("#add").onclick=async ()=>{
+    const title=norm(dlg.querySelector("#title").value);
+    if(!title){ alert("Введите название предмета"); return; }
+    db.subjects.push({
+      id:uid("sub"),
+      teacherId,
+      title,
+      teacherName:t.fullName,
+      cabinet:t.cabinet,
+      createdAt:new Date().toISOString()
+    });
+    await saveDB();
+    dlg.close();
+    render();
+  };
+}
+
+function openAddStudent(teacherId){
+  const t=meTeacher();
+  const dlg=modal(`
+    <div class="row" style="justify-content:space-between">
+      <div class="title">Добавить ученика</div>
+      <button class="btn" id="x">✕</button>
+    </div>
+    <div class="hr"></div>
+
+    <div class="muted">Класс выставится автоматически: <b>${esc(t.className)}</b></div>
+
+    <div style="margin-top:12px">
+      <input class="input" id="fio" placeholder="ФИО ученика">
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <button class="btn p" id="add">Создать</button>
+    </div>
+
+    <div class="hr"></div>
+    <div id="creds" style="display:none"></div>
+  `);
+  dlg.querySelector("#x").onclick=()=>dlg.close();
+  dlg.querySelector("#add").onclick=async ()=>{
+    const fio=norm(dlg.querySelector("#fio").value);
+    if(!fio){ alert("Введите ФИО"); return; }
+
+    const login=genStudentLogin(fio);
+    const pass=genPass();
+    const sid=uid("s");
+
+    db.students.push({
+      id:sid,
+      teacherId,
+      className:t.className,
+      fullName:fio,
+      login, pass,
+      createdAt:new Date().toISOString()
+    });
+
+    const plogin = "parent"+Math.floor(1000+Math.random()*9000);
+    const ppass  = genPass();
+    db.parents.push({
+      id:uid("p"),
+      studentId:sid,
+      login:plogin,
+      pass:ppass,
+      createdAt:new Date().toISOString()
+    });
+
+    await saveDB();
+
+    const c=dlg.querySelector("#creds");
+    c.style.display="block";
+    c.innerHTML=`
+      <div class="title" style="font-size:16px">Данные созданы</div>
+      <div class="muted" style="margin-top:6">Ученик:</div>
+      <div class="pill">логин: <span class="kbd">${esc(login)}</span> • пароль: <span class="kbd">${esc(pass)}</span></div>
+      <div class="muted" style="margin-top:10px">Родитель:</div>
+      <div class="pill">логин: <span class="kbd">${esc(plogin)}</span> • пароль: <span class="kbd">${esc(ppass)}</span></div>
+    `;
+    dlg.querySelector("#add").disabled=true;
+  };
+}
+
+function openStudentCard(teacherId, studentId){
+  const s=db.students.find(x=>x.id===studentId && x.teacherId===teacherId);
+  if(!s){ alert("Ученик не найден"); return; }
+  const called=isParentsCalled(studentId);
+
+  const dlg=modal(`
+    <div class="row" style="justify-content:space-between">
+      <div>
+        <div class="title">${esc(s.fullName)}</div>
+        <div class="muted">Класс: <b>${esc(s.className)}</b></div>
+      </div>
+      <button class="btn" id="x">✕</button>
+    </div>
+    <div class="hr"></div>
+
+    <div class="item">
+      <div class="h">
+        <div class="l">Логин</div>
+        <div class="r"><span class="kbd">${esc(s.login)}</span></div>
+      </div>
+    </div>
+
+    <div style="height:10px"></div>
+
+    <div class="item">
+      <div class="h">
+        <div class="l">Пароль</div>
+        <div class="r"><span class="kbd">${esc(s.pass)}</span></div>
+      </div>
+    </div>
+
+    <div class="hr"></div>
+
+    <div class="row">
+      <button class="btn d" id="call">${called?"Родителей уже вызвали (отменить)":"Вызвать родителей в школу"}</button>
+    </div>
+
+    <div class="muted" style="margin-top:10px">
+      При вызове у ученика появится красное сообщение в вкладке «Пропуск».
+    </div>
+  `);
+  dlg.querySelector("#x").onclick=()=>dlg.close();
+  dlg.querySelector("#call").onclick=async ()=>{
+    if(isParentsCalled(studentId)){
+      await cancelCallParents(studentId);
+      alert("Вызов родителей отменён.");
+    } else {
+      await callParents(teacherId, studentId);
+      alert("Родители вызваны.");
+    }
+    dlg.close();
+    render();
+  };
+}
+ <script>
+/* =========================
+   PART 3/4
+   ========================= */
+
+/* =========================
    9) Teacher main
    ========================= */
 function renderTeacher(){
@@ -842,7 +1030,7 @@ function renderTeacher(){
 
         <div class="card">
           <div class="title">Расписание по дате</div>
-          <div class="muted" style="margin-top:6">Задай расписание на конкретный день (если замены/изменения).</div>
+          <div class="muted" style="margin-top:6">Можно задать предмет, а также изменить учителя и кабинет (замена).</div>
           <div class="hr"></div>
           <div class="row">
             <input class="input" id="datePick" type="date" value="${todayISO()}">
@@ -894,183 +1082,6 @@ function renderTeacher(){
 }
 
 /* =========================
-   Teacher: Modals (simple)
-   ========================= */
-function modal(html){
-  // ultra-simple modal using native <dialog> fallback
-  let dlg = document.querySelector("dialog#dlg");
-  if(!dlg){
-    dlg=document.createElement("dialog");
-    dlg.id="dlg";
-    dlg.style.border="none";
-    dlg.style.padding="0";
-    dlg.style.borderRadius="18px";
-    dlg.style.width="min(980px, calc(100vw - 24px))";
-    dlg.style.boxShadow="0 18px 60px rgba(0,0,0,.35)";
-    dlg.addEventListener("click",(e)=>{ if(e.target===dlg) dlg.close(); });
-    document.body.appendChild(dlg);
-  }
-  dlg.innerHTML = `<div class="card" style="margin:0">${html}</div>`;
-  dlg.showModal();
-  return dlg;
-}
-
-function openAddSubject(teacherId){
-  const t=meTeacher();
-  const dlg=modal(`
-    <div class="row" style="justify-content:space-between">
-      <div class="title">Добавить предмет</div>
-      <button class="btn" id="x">✕</button>
-    </div>
-    <div class="hr"></div>
-    <div class="muted">Автоматически запишется учитель и кабинет.</div>
-    <div style="margin-top:12px">
-      <input class="input" id="title" placeholder="Название предмета (например: Математика)">
-    </div>
-    <div class="row" style="margin-top:12px">
-      <button class="btn p" id="add">Добавить</button>
-    </div>
-  `);
-  dlg.querySelector("#x").onclick=()=>dlg.close();
-  dlg.querySelector("#add").onclick=async ()=>{
-    const title=norm(dlg.querySelector("#title").value);
-    if(!title){ alert("Введите название предмета"); return; }
-    db.subjects.push({
-      id:uid("sub"),
-      teacherId,
-      title,
-      teacherName:t.fullName,
-      cabinet:t.cabinet,
-      createdAt:new Date().toISOString()
-    });
-    await saveDB();
-    dlg.close();
-    render();
-  };
-}
-
-function openAddStudent(teacherId){
-  const t=meTeacher();
-  const dlg=modal(`
-    <div class="row" style="justify-content:space-between">
-      <div class="title">Добавить ученика</div>
-      <button class="btn" id="x">✕</button>
-    </div>
-    <div class="hr"></div>
-
-    <div class="muted">Класс выставится автоматически: <b>${esc(t.className)}</b></div>
-
-    <div style="margin-top:12px">
-      <input class="input" id="fio" placeholder="ФИО ученика">
-    </div>
-
-    <div class="row" style="margin-top:12px">
-      <button class="btn p" id="add">Создать</button>
-    </div>
-
-    <div class="hr"></div>
-    <div id="creds" style="display:none"></div>
-  `);
-  dlg.querySelector("#x").onclick=()=>dlg.close();
-  dlg.querySelector("#add").onclick=async ()=>{
-    const fio=norm(dlg.querySelector("#fio").value);
-    if(!fio){ alert("Введите ФИО"); return; }
-
-    const login=genStudentLogin(fio);
-    const pass=genPass();
-    const sid=uid("s");
-
-    db.students.push({
-      id:sid,
-      teacherId,
-      className:t.className,
-      fullName:fio,
-      login, pass,
-      createdAt:new Date().toISOString()
-    });
-
-    // create parent account too (optional but useful)
-    const plogin = "parent"+Math.floor(1000+Math.random()*9000);
-    const ppass  = genPass();
-    db.parents.push({
-      id:uid("p"),
-      studentId:sid,
-      login:plogin,
-      pass:ppass,
-      createdAt:new Date().toISOString()
-    });
-
-    await saveDB();
-
-    const c=dlg.querySelector("#creds");
-    c.style.display="block";
-    c.innerHTML=`
-      <div class="title" style="font-size:16px">Данные созданы</div>
-      <div class="muted" style="margin-top:6">Ученик:</div>
-      <div class="pill">логин: <span class="kbd">${esc(login)}</span> • пароль: <span class="kbd">${esc(pass)}</span></div>
-      <div class="muted" style="margin-top:10px">Родитель:</div>
-      <div class="pill">логин: <span class="kbd">${esc(plogin)}</span> • пароль: <span class="kbd">${esc(ppass)}</span></div>
-    `;
-    dlg.querySelector("#add").disabled=true;
-  };
-}
-
-function openStudentCard(teacherId, studentId){
-  const s=db.students.find(x=>x.id===studentId && x.teacherId===teacherId);
-  if(!s){ alert("Ученик не найден"); return; }
-  const called=isParentsCalled(studentId);
-
-  const dlg=modal(`
-    <div class="row" style="justify-content:space-between">
-      <div>
-        <div class="title">${esc(s.fullName)}</div>
-        <div class="muted">Класс: <b>${esc(s.className)}</b></div>
-      </div>
-      <button class="btn" id="x">✕</button>
-    </div>
-    <div class="hr"></div>
-
-    <div class="item">
-      <div class="h">
-        <div class="l">Логин</div>
-        <div class="r"><span class="kbd">${esc(s.login)}</span></div>
-      </div>
-    </div>
-
-    <div style="height:10px"></div>
-
-    <div class="item">
-      <div class="h">
-        <div class="l">Пароль</div>
-        <div class="r"><span class="kbd">${esc(s.pass)}</span></div>
-      </div>
-    </div>
-
-    <div class="hr"></div>
-
-    <div class="row">
-      <button class="btn d" id="call">${called?"Родителей уже вызвали (отменить)":"Вызвать родителей в школу"}</button>
-    </div>
-
-    <div class="muted" style="margin-top:10px">
-      При вызове у ученика появится красное сообщение в вкладке «Пропуск».
-    </div>
-  `);
-  dlg.querySelector("#x").onclick=()=>dlg.close();
-  dlg.querySelector("#call").onclick=async ()=>{
-    if(isParentsCalled(studentId)){
-      await cancelCallParents(studentId);
-      alert("Вызов родителей отменён.");
-    } else {
-      await callParents(teacherId, studentId);
-      alert("Родители вызваны.");
-    }
-    dlg.close();
-    render();
-  };
-}
-
-/* =========================
    Teacher: Schedule editors
    ========================= */
 function renderTeacherSchedule(){
@@ -1103,7 +1114,7 @@ function renderTeacherSchedule(){
   $("#back").onclick=()=>{ view=VIEW.TEACHER; teacherTab="schedule"; render(); };
 
   const daysBox=$("#days");
-  const maxRows = 10; // можно больше, но пусть будет 10
+  const maxRows = 10;
   daysBox.innerHTML = DAYS.map(d=>{
     const rows = [];
     for(let i=1;i<=maxRows;i++){
@@ -1128,7 +1139,6 @@ function renderTeacherSchedule(){
   }).join("");
 
   $("#save").onclick=async ()=>{
-    // remove existing base for teacher
     db.schedule_base = db.schedule_base.filter(x=>x.teacherId!==t.id);
 
     daysBox.querySelectorAll("select[data-day]").forEach(sel=>{
@@ -1147,6 +1157,9 @@ function renderTeacherSchedule(){
   };
 }
 
+/* =========================
+   Расписание по дате с заменой учителя и кабинета
+   ========================= */
 function openEditScheduleForDate(teacherId, iso){
   const t=meTeacher();
   const subs = subjectsByTeacher(teacherId);
@@ -1154,7 +1167,7 @@ function openEditScheduleForDate(teacherId, iso){
   if(!dayId){ alert("Это выходной (суббота/воскресенье)."); return; }
 
   const existing = overrideForDate(teacherId, iso);
-  const base = lessonsForDate(teacherId, iso); // already override if exists
+  const base = lessonsForDate(teacherId, iso);
   const maxRows = 10;
 
   const dlg=modal(`
@@ -1179,59 +1192,37 @@ function openEditScheduleForDate(teacherId, iso){
   dlg.querySelector("#x").onclick=()=>dlg.close();
 
   const rowsBox=dlg.querySelector("#rows");
-rowsBox.innerHTML = Array.from({length:maxRows},(_,idx)=>{
-  const order=idx+1;
-  const curLesson = base.find(x=>x.order===order) || {};
-  const curSub = curLesson.subjectId || "";
-  const curTeacher = curLesson.teacherNameOverride || "";
-  const curCabinet = curLesson.cabinetOverride || "";
-
-  return `
-    <div class="item" style="margin-top:10px">
-      <div class="row" style="margin-bottom:6px">
-        <div class="pill" style="min-width:78px;justify-content:center">Урок ${order}</div>
-      </div>
-
-      <div class="grid2">
-        <div>
-          <div class="muted">Предмет</div>
-          <select class="select" data-order="${order}" data-type="subject">
+  rowsBox.innerHTML = Array.from({length:maxRows},(_,idx)=>{
+    const order=idx+1;
+    const cur = base.find(x=>x.order===order) || {};
+    return `
+      <div class="item" style="margin-bottom:10px">
+        <div class="row">
+          <div class="pill">Урок ${order}</div>
+          <select class="select" data-order="${order}">
             <option value="">— нет —</option>
-            ${subs.map(s=>`<option value="${esc(s.id)}" ${s.id===curSub?"selected":""}>${esc(s.title)}</option>`).join("")}
+            ${subs.map(s=>`<option value="${esc(s.id)}" ${s.id===cur.subjectId?"selected":""}>${esc(s.title)}</option>`).join("")}
           </select>
         </div>
-
-        <div>
-          <div class="muted">Учитель (замена)</div>
-          <input class="input" data-order="${order}" data-type="teacher" value="${esc(curTeacher)}" placeholder="Например: Петров А.А.">
-        </div>
-
-        <div>
-          <div class="muted">Кабинет (замена)</div>
-          <input class="input" data-order="${order}" data-type="cabinet" value="${esc(curCabinet)}" placeholder="Например: 34">
+        <div class="row" style="margin-top:8px">
+          <input class="input" placeholder="Учитель (замена)" data-teacher="${order}" value="${esc(cur.teacherNameOverride||"")}">
+          <input class="input" placeholder="Кабинет (замена)" data-cabinet="${order}" value="${esc(cur.cabinetOverride||"")}">
         </div>
       </div>
-    </div>
-  `;
-}).join("");
+    `;
+  }).join("");
+
   dlg.querySelector("#save").onclick=async ()=>{
     const lessons=[];
-for(let order=1; order<=maxRows; order++){
-  const subject = rowsBox.querySelector(`select[data-order="${order}"][data-type="subject"]`)?.value || "";
-  const teacher = rowsBox.querySelector(`input[data-order="${order}"][data-type="teacher"]`)?.value || "";
-  const cabinet = rowsBox.querySelector(`input[data-order="${order}"][data-type="cabinet"]`)?.value || "";
+    rowsBox.querySelectorAll("select[data-order]").forEach(sel=>{
+      const order=Number(sel.getAttribute("data-order"));
+      const sid=sel.value || "";
+      if(!sid) return;
+      const teacherNameOverride = rowsBox.querySelector(`[data-teacher="${order}"]`).value.trim();
+      const cabinetOverride = rowsBox.querySelector(`[data-cabinet="${order}"]`).value.trim();
+      lessons.push({order, subjectId:sid, teacherNameOverride, cabinetOverride});
+    });
 
-  if(!subject) continue;
-
-  lessons.push({
-    order,
-    subjectId: subject,
-    teacherNameOverride: teacher,
-    cabinetOverride: cabinet
-  });
-}
-
-    // upsert override
     const idx = db.schedule_overrides.findIndex(o=>o.teacherId===teacherId && o.date===iso);
     if(idx>=0) db.schedule_overrides[idx] = {...db.schedule_overrides[idx], lessons};
     else db.schedule_overrides.push({id:uid("ov"), teacherId, date:iso, lessons});
@@ -1247,7 +1238,11 @@ for(let order=1; order<=maxRows; order++){
     await saveDB();
     dlg.close();
   };
-}
+} 
+  <script>
+/* =========================
+   PART 4/4
+   ========================= */
 
 /* =========================
    10) Teacher: Subject page
@@ -1502,7 +1497,6 @@ function renderStudentLike(kind){
     <div style="height:12px"></div>
   `;
 
-  // banner: show on "skips" and also at top (requested)
   const banner = (called && (studentTab==="skips")) ? `
     <div class="bannerDanger">
       ВАШИХ РОДИТЕЛЕЙ ВЫЗВАЛИ В ШКОЛУ, ХАХАХАХА
@@ -1522,18 +1516,20 @@ function renderStudentLike(kind){
     body.innerHTML = `
       <div class="card">
         <div class="title">Расписание</div>
-        <div class="muted">Показывается по датам (если учитель менял расписание на конкретный день — отобразится замена).</div>
+        <div class="muted">Показывается по датам (учитывая замены учителя и кабинета).</div>
         <div class="hr"></div>
         <div class="list">
           ${dates.map(iso=>{
             const lessons = lessonsForDate(tid, iso);
             const show = lessons.length
               ? lessons.map(l=>{
-                 const teacherName = l.teacherNameOverride || sub?.teacherName || teacher?.fullName || "—";
-const cabinet = l.cabinetOverride || sub?.cabinet || teacher?.cabinet || "—";
+                  const sub = subjectById(tid, l.subjectId);
+                  const teacherName = l.teacherNameOverride || sub?.teacherName || teacher?.fullName || "—";
+                  const cabinet = l.cabinetOverride || sub?.cabinet || teacher?.cabinet || "—";
+                  return `<div class="item" style="margin-top:8px">
                     <div class="h">
                       <div class="l">${esc(l.order)}. ${esc(sub?.title||"—")}</div>
-                      <div class="r">${esc(sub?.teacherName||teacher?.fullName||"—")}</div>
+                      <div class="r">${esc(teacherName)} • каб. ${esc(cabinet)}</div>
                     </div>
                   </div>`;
                 }).join("")
@@ -1601,7 +1597,6 @@ const cabinet = l.cabinetOverride || sub?.cabinet || teacher?.cabinet || "—";
   if(studentTab==="grades" || studentTab==="skips"){
     const marks = marksForStudentWeek(tid, student.id, dates);
 
-    // group by date -> lessonOrder -> subject
     const byDate = {};
     for(const m of marks){
       (byDate[m.date] ||= []).push(m);
@@ -1611,7 +1606,6 @@ const cabinet = l.cabinetOverride || sub?.cabinet || teacher?.cabinet || "—";
       const arr = (byDate[iso]||[]).slice()
         .sort((a,b)=> (a.lessonOrder||1)-(b.lessonOrder||1) || (a.createdAt||"").localeCompare(b.createdAt||""));
 
-      // group: key = subjectId + "|" + lessonOrder
       const groups = {};
       for(const m of arr){
         if(onlySkips && !(m.mark==="N" || m.mark==="O")) continue;
@@ -1632,7 +1626,6 @@ const cabinet = l.cabinetOverride || sub?.cabinet || teacher?.cabinet || "—";
         `;
       }
 
-      // sort groups by lessonOrder
       keys.sort((a,b)=>{
         const ao=Number(a.split("|")[1]||1);
         const bo=Number(b.split("|")[1]||1);
@@ -1708,9 +1701,7 @@ function renderWithBottom(){
   render();
 }
 
-/* update bottom when changing tab */
 function hookBottom(){
-  // re-run after each render, simple
   updateBottomVisibility();
 }
 
@@ -1719,15 +1710,7 @@ render = function(){ oldRender(); hookBottom(); };
 
 startSync();
 render();
-
-/* =========================
-   NOTE:
-   For testing Rules you can set:
-   {
-     "rules": { ".read": true, ".write": true }
-   }
-   Then later we can secure it.
-   ========================= */
 </script>
 </body>
 </html>
+  
