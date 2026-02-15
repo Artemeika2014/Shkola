@@ -208,6 +208,8 @@ const DAYS = [
   {id:3,name:"Среда"},
   {id:4,name:"Четверг"},
   {id:5,name:"Пятница"},
+  {id:6,name:"Суббота"},
+  {id:7,name:"Воскресенье"},
 ];
 const MONTHS = ["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"];
 
@@ -220,9 +222,8 @@ function fromISO(iso){ const [y,m,d]=iso.split("-").map(Number); return new Date
 function todayISO(){ return toISO(new Date()); }
 
 function weekdayId(iso){
-  const wd = fromISO(iso).getDay();
-  if(wd===0 || wd===6) return null;
-  return wd;
+  const wd = fromISO(iso).getDay(); // 0=вс,1=пн...6=сб
+  return wd===0 ? 7 : wd; // воскресенье = 7
 }
 function mondayOfWeek(date){
   const d = new Date(date);
@@ -237,7 +238,11 @@ function weekDates(offset){
   base.setDate(base.getDate()+offset*7);
   const mon = mondayOfWeek(base);
   const out=[];
-  for(let i=0;i<5;i++){ const x=new Date(mon); x.setDate(x.getDate()+i); out.push(toISO(x)); }
+  for(let i=0;i<7;i++){ // теперь 7 дней!
+    const x=new Date(mon);
+    x.setDate(x.getDate()+i);
+    out.push(toISO(x));
+  }
   return out;
 }
 function weekLabel(monISO){
