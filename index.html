@@ -1179,28 +1179,57 @@ function openEditScheduleForDate(teacherId, iso){
   dlg.querySelector("#x").onclick=()=>dlg.close();
 
   const rowsBox=dlg.querySelector("#rows");
-  rowsBox.innerHTML = Array.from({length:maxRows},(_,idx)=>{
-    const order=idx+1;
-    const cur = base.find(x=>x.order===order)?.subjectId || "";
-    return `
-      <div class="row" style="margin-top:8px">
-        <div class="pill" style="min-width:78px;justify-content:center">Урок ${order}</div>
-        <select class="select" data-order="${order}">
-          <option value="">— нет —</option>
-          ${subs.map(s=>`<option value="${esc(s.id)}" ${s.id===cur?"selected":""}>${esc(s.title)}</option>`).join("")}
-        </select>
-      </div>
-    `;
-  }).join("");
+rowsBox.innerHTML = Array.from({length:maxRows},(_,idx)=>{
+  const order=idx+1;
+  const curLesson = base.find(x=>x.order===order) || {};
+  const curSub = curLesson.subjectId || "";
+  const curTeacher = curLesson.teacherNameOverride || "";
+  const curCabinet = curLesson.cabinetOverride || "";
 
+  return `
+    <div class="item" style="margin-top:10px">
+      <div class="row" style="margin-bottom:6px">
+        <div class="pill" style="min-width:78px;justify-content:center">Урок ${order}</div>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <div class="muted">Предмет</div>
+          <select class="select" data-order="${order}" data-type="subject">
+            <option value="">— нет —</option>
+            ${subs.map(s=>`<option value="${esc(s.id)}" ${s.id===curSub?"selected":""}>${esc(s.title)}</option>`).join("")}
+          </select>
+        </div>
+
+        <div>
+          <div class="muted">Учитель (замена)</div>
+          <input class="input" data-order="${order}" data-type="teacher" value="${esc(curTeacher)}" placeholder="Например: Петров А.А.">
+        </div>
+
+        <div>
+          <div class="muted">Кабинет (замена)</div>
+          <input class="input" data-order="${order}" data-type="cabinet" value="${esc(curCabinet)}" placeholder="Например: 34">
+        </div>
+      </div>
+    </div>
+  `;
+}).join("");
   dlg.querySelector("#save").onclick=async ()=>{
     const lessons=[];
-    rowsBox.querySelectorAll("select[data-order]").forEach(sel=>{
-      const order=Number(sel.getAttribute("data-order"));
-      const sid=sel.value || "";
-      if(!sid) return;
-      lessons.push({order, subjectId:sid});
-    });
+for(let order=1; order<=maxRows; order++){
+  const subject = rowsBox.querySelector(`select[data-order="${order}"][data-type="subject"]`)?.value || "";
+  const teacher = rowsBox.querySelector(`input[data-order="${order}"][data-type="teacher"]`)?.value || "";
+  const cabinet = rowsBox.querySelector(`input[data-order="${order}"][data-type="cabinet"]`)?.value || "";
+
+  if(!subject) continue;
+
+  lessons.push({
+    order,
+    subjectId: subject,
+    teacherNameOverride: teacher,
+    cabinetOverride: cabinet
+  });
+}
 
     // upsert override
     const idx = db.schedule_overrides.findIndex(o=>o.teacherId===teacherId && o.date===iso);
@@ -1500,8 +1529,8 @@ function renderStudentLike(kind){
             const lessons = lessonsForDate(tid, iso);
             const show = lessons.length
               ? lessons.map(l=>{
-                  const sub = subjectById(tid, l.subjectId);
-                  return `<div class="item" style="margin-top:8px">
+                 const teacherName = l.teacherNameOverride || sub?.teacherName || teacher?.fullName || "—";
+const cabinet = l.cabinetOverride || sub?.cabinet || teacher?.cabinet || "—";
                     <div class="h">
                       <div class="l">${esc(l.order)}. ${esc(sub?.title||"—")}</div>
                       <div class="r">${esc(sub?.teacherName||teacher?.fullName||"—")}</div>
